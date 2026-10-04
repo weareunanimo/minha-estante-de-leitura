@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Minha estante de leitura</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700&family=Source+Serif+4:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+--bg:#F4F6F8; --surface:#FFFFFF; --ink:#15213B; --muted:#58637D; --line:#D9DFE8; --chip:#E8ECF3;
+--blue:#2C55D8; --on-blue:#FFFFFF; --gold:#E7A400; --gold-soft:#FFF1CC; --danger:#B3261E;
+--display:'Bricolage Grotesque',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+--serif:'Source Serif 4',Georgia,'Times New Roman',serif;
+--tabh:64px;
+box-sizing:border-box;
+padding-top:env(safe-area-inset-top,0px);
+padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+:root:not([data-theme="light"]){
+--bg:#0F1626; --surface:#172036; --ink:#EEF1F8; --muted:#A3AEC6; --line:#2A3652; --chip:#222E48;
+--blue:#7C9BFF; --on-blue:#0F1626; --gold:#F2B632; --gold-soft:#2A2A1E; --danger:#FF8A80;
+}
+}
+:root[data-theme="dark"]{
+--bg:#0F1626; --surface:#172036; --ink:#EEF1F8; --muted:#A3AEC6; --line:#2A3652; --chip:#222E48;
+--blue:#7C9BFF; --on-blue:#0F1626; --gold:#F2B632; --gold-soft:#2A2A1E; --danger:#FF8A80;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px);}
+*,*::before,*::after{box-sizing:inherit;}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--display);font-size:17px;line-height:1.45;-webkit-text-size-adjust:100%;overflow-x:hidden;}
+button,input,textarea,select{font:inherit;color:inherit;}
+button{-webkit-tap-highlight-color:transparent;}
+.app{max-width:640px;margin:0 auto;padding:0 16px 150px;}
+.view[hidden]{display:none;}
+h1{margin:0;font-size:32px;line-height:1.05;font-weight:700;letter-spacing:-0.025em;}
+h2{margin:0;font-weight:700;letter-spacing:-0.015em;}
+.lead{margin:6px 0 0;color:var(--muted);font-size:16px;}
+.hero{padding:20px 0 8px;}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;}
+/* botões e campos */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:10px 18px;border-radius:12px;border:1.5px solid var(--ink);background:transparent;cursor:pointer;font-weight:600;font-size:17px;}
+.btn.primary{background:var(--blue);border-color:var(--blue);color:var(--on-blue);}
+.btn.quiet{border-color:var(--line);color:var(--muted);}
+.btn.block{display:flex;width:100%;}
+.btn.small{min-height:44px;padding:8px 14px;font-size:16px;}
+.btn:focus-visible,.chip:focus-visible,.main:focus-visible,.rtitle:focus-visible,.tab:focus-visible,.back:focus-visible,.bk-more summary:focus-visible{outline:3px solid var(--gold);outline-offset:2px;}
+.btn:active{transform:scale(.98);}
+textarea,input[type=text],input[type=number],input[type=search],select{background:var(--surface);border:1.5px solid var(--line);border-radius:12px;padding:10px 14px;min-height:48px;width:100%;}
+input:focus-visible,textarea:focus-visible,select:focus-visible{outline:3px solid var(--blue);outline-offset:1px;border-color:var(--blue);}
+textarea{font-family:var(--serif);font-size:18px;line-height:1.5;resize:vertical;min-height:104px;}
+/* estante: barra fixa de busca e filtros */
+.search{border-radius:999px;padding-left:18px;margin-top:4px;}
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);margin:10px -16px 0;padding:8px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;}
+.addbtn{flex:0 0 auto;width:48px;height:48px;border-radius:50%;border:0;background:var(--blue);color:var(--on-blue);display:grid;place-items:center;cursor:pointer;}
+.addbtn svg{width:24px;height:24px;}
+.addbtn:focus-visible{outline:3px solid var(--gold);outline-offset:2px;}
+.chips{flex:1 1 auto;min-width:0;display:flex;flex-wrap:nowrap;gap:8px;overflow-x:auto;margin:0;padding:0 0 2px;scrollbar-width:none;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity;}
+.chips::-webkit-scrollbar{display:none;}
+.chip{flex:0 0 auto;min-height:44px;padding:6px 16px;border-radius:999px;border:1.5px solid var(--line);background:var(--surface);cursor:pointer;font-weight:600;font-size:16px;white-space:nowrap;scroll-snap-align:start;}
+.chip .n{margin-left:6px;color:var(--muted);font-variant-numeric:tabular-nums;font-weight:400;}
+.chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--bg);}
+.chip[aria-pressed="true"] .n{color:var(--bg);opacity:.8;}
+.countrow{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:12px 0 2px;font-size:15px;color:var(--muted);}
+.countrow select{width:auto;min-height:44px;padding:6px 12px;font-size:16px;}
+/* lista de livros */
+.list{list-style:none;margin:0;padding:0;}
+.item{display:grid;grid-template-columns:48px 1fr;align-items:start;border-bottom:1px solid var(--line);padding:12px 0 12px 0;}
+.item.lendo{background:var(--gold-soft);box-shadow:inset 5px 0 0 var(--gold);margin:0 -16px;padding-left:16px;padding-right:16px;}
+.item.descartado{opacity:.72;}
+.chk{position:relative;display:flex;width:48px;height:48px;align-items:center;justify-content:flex-start;cursor:pointer;margin-top:-4px;}
+.chk input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer;}
+.box{width:28px;height:28px;border:2px solid var(--muted);border-radius:8px;display:grid;place-items:center;background:var(--surface);margin-left:2px;}
+.chk input:checked + .box{background:var(--blue);border-color:var(--blue);}
+.chk input:checked + .box::after{content:"";width:7px;height:13px;border:solid var(--on-blue);border-width:0 3px 3px 0;transform:rotate(45deg) translate(-1px,-1px);}
+.chk input:focus-visible + .box{outline:3px solid var(--gold);outline-offset:2px;}
+.chk input:disabled + .box{opacity:.4;}
+.main{display:block;width:100%;text-align:left;background:none;border:0;padding:0;cursor:pointer;}
+.main .t{display:block;font-weight:700;font-size:18px;line-height:1.25;}
+.item.lido .main .t{color:var(--muted);}
+.main .a{display:block;color:var(--muted);font-size:15px;margin-top:2px;}
+.main .s{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-family:var(--serif);font-size:16px;line-height:1.45;margin-top:6px;}
+.pills{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+.pill{display:inline-block;white-space:nowrap;font-size:14px;line-height:1.2;padding:4px 10px;border-radius:999px;background:var(--chip);color:var(--ink);}
+.pill.muted{color:var(--muted);}
+.pill.tag{background:var(--gold);color:#15213B;font-weight:600;}
+.pill.tag.lido{background:var(--blue);color:var(--on-blue);}
+.pill.tag.off{background:var(--line);color:var(--muted);}
+.empty{margin:0;color:var(--muted);}
+.empty-state{padding:36px 4px;text-align:center;}
+.empty-state h2{font-size:22px;}
+.empty-state p{margin:8px auto 18px;color:var(--muted);max-width:32ch;}
+.empty-state .btn{margin:0 auto 10px;max-width:320px;}
+/* livro */
+.back{display:inline-flex;align-items:center;gap:4px;min-height:48px;margin:8px 0 0 -8px;padding:0 12px 0 4px;background:none;border:0;font-weight:600;font-size:17px;color:var(--blue);cursor:pointer;}
+.bk-head{margin-top:4px;}
+.bk-head h2{font-size:30px;line-height:1.1;margin-top:8px;}
+.bk-head .by{margin:4px 0 0;color:var(--muted);font-size:17px;}
+.bk-head h2 a.buy{color:inherit;text-decoration:underline;text-decoration-color:var(--blue);text-decoration-thickness:3px;text-underline-offset:6px;}
+.bk-head h2 a.buy svg{display:inline-block;vertical-align:baseline;margin-left:4px;color:var(--blue);}
+.bk-head h2 a.buy:focus-visible{outline:3px solid var(--gold);outline-offset:3px;border-radius:4px;}
+.bk-buy{margin:6px 0 0;color:var(--muted);font-size:14px;}
+.bk-vibe{margin:12px 0 0;color:var(--blue);font-weight:600;font-size:15px;}
+.bk-more{margin-top:8px;}
+.bk-more summary{min-height:48px;display:flex;align-items:center;cursor:pointer;font-weight:600;color:var(--blue);}
+.bk-more .bk-syn{margin-top:2px;}
+.bk-syn{margin:12px 0 0;font-family:var(--serif);font-size:19px;line-height:1.55;}
+.bk-act{margin-top:20px;display:grid;gap:10px;}
+.progress{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;}
+.track{height:12px;border-radius:6px;background:var(--line);overflow:hidden;}
+.fill{height:100%;background:var(--gold);border-radius:6px;}
+.pinfo{margin:10px 0 0;font-size:16px;font-variant-numeric:tabular-nums;}
+.pstep{display:grid;grid-template-columns:72px 1fr 72px;gap:8px;margin-top:12px;}
+.pstep input{text-align:center;font-size:20px;font-weight:600;}
+.pstep .btn{padding:8px 0;}
+.notes{margin-top:28px;border-top:1px solid var(--line);padding-top:18px;}
+.notes h3{margin:0 0 10px;font-size:20px;font-weight:700;}
+.noteline{display:grid;grid-template-columns:110px 1fr;gap:8px;margin-top:8px;}
+.noteline label{display:block;}
+.notelist{list-style:none;margin:18px 0 0;padding:0;display:grid;gap:16px;}
+.note{border-left:3px solid var(--line);padding:2px 0 2px 14px;}
+.note p{margin:0;font-family:var(--serif);font-size:18px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere;}
+.note .meta{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:2px;font-size:14px;color:var(--muted);}
+.link{background:none;border:0;padding:0 4px;min-height:44px;min-width:64px;color:var(--danger);cursor:pointer;font-size:15px;text-decoration:underline;}
+/* resumo */
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px;}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 10px;}
+.stat b{display:block;font-size:28px;line-height:1.05;font-weight:700;font-variant-numeric:tabular-nums;}
+.stat span{display:block;font-size:14px;color:var(--muted);margin-top:4px;line-height:1.2;}
+.total{margin-top:16px;}
+.total .row{display:flex;justify-content:space-between;font-size:15px;color:var(--muted);margin-bottom:6px;}
+.total .track{height:14px;}
+.total .fill{background:var(--blue);}
+.shelf-title{margin:28px 0 0;font-size:20px;font-weight:700;}
+.shelf-hint{margin:4px 0 0;color:var(--muted);font-size:15px;}
+.shelf{display:flex;align-items:flex-end;gap:3px;height:150px;border-bottom:4px solid var(--ink);padding:0 2px;margin-top:14px;}
+.spine{flex:1 1 0;min-width:8px;max-width:34px;border:1.5px solid var(--muted);border-bottom:0;border-radius:4px 4px 0 0;background:transparent;padding:0;cursor:pointer;}
+.spine.lido{background:var(--blue);border-color:var(--blue);}
+.spine.lendo{background:var(--gold);border-color:var(--gold);}
+.spine.sel{outline:3px solid var(--ink);outline-offset:2px;}
+.spine:focus-visible{outline:3px solid var(--ink);outline-offset:2px;}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:12px;font-size:15px;color:var(--muted);}
+.legend span{display:inline-flex;align-items:center;gap:6px;}
+.sw{width:14px;height:14px;border-radius:4px;border:1.5px solid var(--muted);display:inline-block;}
+.sw.lido{background:var(--blue);border-color:var(--blue);}
+.sw.lendo{background:var(--gold);border-color:var(--gold);}
+.pick{margin-top:14px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;}
+.pick p{margin:0;font-size:17px;}
+.pick small{display:block;color:var(--muted);font-size:15px;margin-top:2px;}
+.pickbtns{display:grid;grid-template-columns:1fr 1.3fr 1fr;gap:8px;margin-top:12px;}
+.pickbtns .btn{padding:8px 6px;}
+.sync{margin:22px 0 0;font-size:14px;color:var(--muted);}
+.linkrow{margin-top:20px;}
+/* notas e ranking */
+.pill.star{background:transparent;border:1.5px solid var(--gold);padding:2.5px 9px;}
+.pill.star b{margin-right:6px;}
+.rate{margin-top:16px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;}
+.rate-top{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:10px;}
+.rate-n{font-size:34px;line-height:1;font-weight:700;font-variant-numeric:tabular-nums;}
+.rate-of{color:var(--muted);font-size:16px;}
+.rate-pos{margin-left:auto;font-weight:700;font-size:16px;}
+.rate-note{margin:10px 0 0;color:var(--muted);font-size:14px;line-height:1.4;}
+.rank{list-style:none;margin:6px 0 0;padding:0;}
+.rrow{position:relative;display:grid;grid-template-columns:1fr auto;column-gap:12px;row-gap:8px;align-items:start;padding:14px 0;border-bottom:1px solid var(--line);}
+.rrow.lendo{background:var(--gold-soft);box-shadow:inset 5px 0 0 var(--gold);margin:0 -16px;padding-left:16px;padding-right:16px;}
+.rrow.lido .rtitle{color:var(--muted);}
+.rpos{font-size:24px;line-height:1.1;font-weight:700;color:var(--muted);text-align:center;font-variant-numeric:tabular-nums;}
+.rpos.top{color:var(--ink);}
+.rname{min-width:0;}
+.rtitle{display:block;width:100%;text-align:left;background:none;border:0;padding:0;font-weight:700;font-size:17px;line-height:1.25;cursor:pointer;}
+.rtitle::after{content:"";position:absolute;inset:0;}
+.rtitle:focus-visible{outline:3px solid var(--gold);outline-offset:2px;}
+.rname .a{display:block;color:var(--muted);font-size:14px;margin-top:2px;}
+.rname .m{display:block;color:var(--muted);font-size:13px;margin-top:2px;}
+.rscore{text-align:right;font-weight:700;font-size:22px;line-height:1.1;font-variant-numeric:tabular-nums;}
+.rscore small{display:block;font-weight:400;font-size:12px;color:var(--muted);margin-top:2px;}
+.rbar{grid-column:1 / -1;height:6px;border-radius:3px;background:var(--line);overflow:hidden;}
+.rbar i{display:block;height:100%;background:var(--blue);border-radius:3px;}
+.rk-sub{margin:28px 0 0;font-size:20px;font-weight:700;}
+.rk-hint{margin:4px 0 8px;color:var(--muted);font-size:15px;}
+.rk-un{list-style:none;margin:0;padding:0;}
+.rk-un button{display:block;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--line);min-height:52px;padding:8px 0;font-size:16px;cursor:pointer;}
+.rk-un button:focus-visible{outline:3px solid var(--gold);outline-offset:2px;}
+.rk-foot{margin:22px 0 0;color:var(--muted);font-size:14px;line-height:1.45;}
+.rchips{display:flex;gap:8px;margin-top:6px;}
+/* navegação inferior */
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--surface);border-top:1px solid var(--line);padding:0 8px calc(0px + env(safe-area-inset-bottom,0px));}
+.tabs .in{max-width:640px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr);}
+.tab{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:var(--tabh);background:none;border:0;cursor:pointer;color:var(--muted);font-size:13px;font-weight:600;}
+.tab svg{width:26px;height:26px;}
+.tab[aria-current="page"]{color:var(--ink);}
+.tab[aria-current="page"]::before{content:"";position:absolute;top:0;left:22%;right:22%;height:3px;border-radius:0 0 3px 3px;background:var(--blue);}
+.dot{position:absolute;top:8px;left:calc(50% + 8px);width:10px;height:10px;border-radius:50%;background:var(--gold);border:2px solid var(--surface);}
+.toast{position:fixed;left:12px;right:12px;bottom:calc(var(--tabh) + 14px + env(safe-area-inset-bottom,0px));z-index:30;max-width:616px;margin:0 auto;background:var(--ink);color:var(--bg);border-radius:14px;padding:8px 8px 8px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:16px;}
+.toast[hidden]{display:none;}
+.toast button{min-height:44px;padding:0 14px;border:0;border-radius:10px;background:transparent;color:var(--gold);font-weight:700;font-size:16px;cursor:pointer;}
+.toast button[hidden]{display:none;}
+/* adicionar livro */
+dialog{border:0;padding:0;width:100%;max-width:640px;margin:auto auto 0;border-radius:20px 20px 0 0;background:var(--surface);color:var(--ink);max-height:92vh;max-height:92dvh;overflow:auto;}
+dialog::backdrop{background:rgba(10,16,32,.55);}
+.dlg{padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px));}
+.dlg-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:6px;}
+.dlg-head h2{font-size:24px;}
+.dlg label{display:grid;gap:6px;margin-top:14px;font-size:15px;color:var(--muted);}
+.dlg .two{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.dlg textarea{min-height:92px;font-size:17px;}
+.addmsg{min-height:1.4em;margin:10px 0 0;font-size:15px;color:var(--danger);}
+.dlg-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto !important;transition:none !important;animation:none !important;}}
+</style>
+</head>
+<body>
+<div class="app">
+<main>
+<section class="view" id="v-estante" aria-label="Estante">
+<header class="hero">
+<h1>Minha estante</h1>
+<p class="lead">Livros curtos e fáceis para começar. Toque num livro para ver os detalhes.</p>
+</header>
+<input class="search" type="search" id="busca" placeholder="Buscar título, autor ou gênero" aria-label="Buscar livros" enterkeyhint="search">
+<div class="bar">
+<div class="chips" id="chips" role="group" aria-label="Filtrar por situação">
+<button class="chip" data-f="todos" aria-pressed="true">Todos<span class="n"></span></button>
+<button class="chip" data-f="para-ler" aria-pressed="false">Para ler<span class="n"></span></button>
+<button class="chip" data-f="lendo" aria-pressed="false">Lendo<span class="n"></span></button>
+<button class="chip" data-f="lido" aria-pressed="false">Lidos<span class="n"></span></button>
+<button class="chip" data-f="descartado" aria-pressed="false">Descartados<span class="n"></span></button>
+</div>
+<button class="addbtn" id="fab" type="button" aria-label="Adicionar livro">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+</button>
+</div>
+<div class="countrow">
+<span id="count"></span>
+<label><span class="sr">Ordenar por</span>
+<select id="ordem" aria-label="Ordenar por">
+<option value="curtos">Menos páginas</option>
+<option value="ranking">Mais bem avaliados</option>
+<option value="padrao">Minha seleção</option>
+<option value="longos">Mais páginas</option>
+<option value="titulo">Título A a Z</option>
+</select>
+</label>
+</div>
+<ul class="list" id="lista"></ul>
+</section>
+<section class="view" id="v-livro" aria-label="Livro" hidden></section>
+<section class="view" id="v-ranking" aria-label="Ranking" hidden></section>
+<section class="view" id="v-resumo" aria-label="Resumo" hidden></section>
+</main>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden>
+<span id="toast-msg"></span>
+<button type="button" id="toast-undo" hidden>Desfazer</button>
+</div>
+<nav class="tabs" aria-label="Navegação principal">
+<div class="in">
+<button class="tab" data-go="estante" aria-current="page">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V6M9 20V4M14 20V8M19 20l-2-14"/><path d="M3 20h18"/></svg>
+<span>Estante</span>
+</button>
+<button class="tab" data-go="livro" aria-current="false">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 6c-2-1.5-5-2-8-1.5V18c3-.5 6 0 8 1.5 2-1.5 5-2 8-1.5V4.5C17 4 14 4.5 12 6z"/><path d="M12 6v13.5"/></svg>
+<span id="tab-livro-label">Livro</span><i class="dot" id="dot" hidden></i>
+</button>
+<button class="tab" data-go="ranking" aria-current="false">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg>
+<span>Ranking</span>
+</button>
+<button class="tab" data-go="resumo" aria-current="false">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 20v-7M12 20V5M19 20v-10"/></svg>
+<span>Resumo</span>
+</button>
+</div>
+</nav>
+<dialog id="dlg-add" aria-labelledby="dlg-title">
+<form class="dlg" id="form-add" novalidate>
+<div class="dlg-head">
+<h2 id="dlg-title">Adicionar um livro</h2>
+<button type="button" class="btn quiet small" id="dlg-close">Fechar</button>
+</div>
+<label>Título<input type="text" id="novo-titulo" autocomplete="off" enterkeyhint="next"></label>
+<label>Autor<input type="text" id="novo-autor" autocomplete="off" enterkeyhint="next"></label>
+<div class="two">
+<label>Páginas<input type="number" id="novo-paginas" min="1" inputmode="numeric" enterkeyhint="next"></label>
+<label>Gênero (opcional)<input type="text" id="novo-genero" autocomplete="off" enterkeyhint="next"></label>
+</div>
+<label>Sobre o livro (opcional)<textarea id="novo-sinopse" rows="3" placeholder="Em uma ou duas frases, do que se trata?"></textarea></label>
+<p class="addmsg" id="novo-msg" role="alert"></p>
+<div class="dlg-actions">
+<button type="button" class="btn" id="add-cancel">Cancelar</button>
+<button type="submit" class="btn primary">Adicionar</button>
+</div>
+</form>
+</dialog>
+<script>
+(function(){
+'use strict';
+var BOOKS = [
+{id:'velhos', t:'Onde os Velhos Não Têm Vez', a:'Cormac McCarthy', g:'Western policial', c:'Estados Unidos', p:256, pr:89.90, v:'Se você curte Breaking Bad'},
+{id:'estrada', t:'A Estrada', a:'Cormac McCarthy', g:'Ficção pós-apocalíptica', c:'Estados Unidos', p:200, pr:62.93, v:'Se você curte Breaking Bad'},
+{id:'expresso', t:'Assassinato no Expresso do Oriente', a:'Agatha Christie', g:'Mistério policial', c:'Reino Unido', p:256, ap:true, pr:null, v:'Para quem gosta de suspense'},
+{id:'vidaprivada', t:'Comédias da Vida Privada', a:'Luis Fernando Verissimo', g:'Crônicas de humor', c:'Brasil', p:264, pr:null, v:'Se você curte The Office'},
+{id:'escola', t:'Comédias para se Ler na Escola', a:'Luis Fernando Verissimo', g:'Crônicas de humor', c:'Brasil', p:148, pr:79.90, v:'Se você curte The Office'},
+{id:'mochileiro', t:'O Guia do Mochileiro das Galáxias', a:'Douglas Adams', g:'Humor e ficção científica', c:'Reino Unido', p:208, ap:true, pr:null, v:'Se você curte The Office e Weeds'},
+{id:'extraordinario', t:'Extraordinário', a:'R. J. Palacio', g:'Ficção juvenil', c:'Estados Unidos', p:320, ap:true, pr:null, v:'Se você curte Ted Lasso'},
+{id:'coragem', t:'A Coragem de Ser Imperfeito', a:'Brené Brown', g:'Desenvolvimento pessoal', c:'Estados Unidos', p:208, ap:true, pr:null, v:'Se você curte Ted Lasso'},
+{id:'carandiru', t:'Estação Carandiru', a:'Drauzio Varella', g:'Relato real', c:'Brasil', p:232, pr:62.90, v:'Se você curte rap. Edição de bolso', n:'Edição de bolso'},
+{id:'sobrevivendo', t:'Sobrevivendo no Inferno', a:'Racionais MC\'s', g:'Letras de rap', c:'Brasil', p:160, pr:null, v:'Se você curte rap'},
+{id:'capao', t:'Capão Pecado', a:'Ferréz', g:'Romance urbano', c:'Brasil', p:144, pr:59.90, v:'Se você curte rap'},
+{id:'quarto', t:'Quarto de Despejo', a:'Carolina Maria de Jesus', g:'Diário', c:'Brasil', p:200, ap:true, pr:null, v:'Se você curte rap'},
+{id:'budapeste', t:'Budapeste', a:'Chico Buarque', g:'Romance', c:'Brasil', p:176, pr:87.90, v:'Se você curte MPB'},
+{id:'chumbo', t:'Anos de Chumbo e Outros Contos', a:'Chico Buarque', g:'Contos', c:'Brasil', p:168, pr:87.90, v:'Se você curte MPB'},
+{id:'bras', t:'Memórias Póstumas de Brás Cubas', a:'Machado de Assis', g:'Romance clássico', c:'Brasil', p:368, pr:62.91, v:'Humor ácido. Bolso tem 240 páginas por R$ 49,90'},
+{id:'estrangeiro', t:'O Estrangeiro', a:'Albert Camus', g:'Romance', c:'França', p:128, ap:true, pr:null, v:'Curto e direto'},
+{id:'velhomar', t:'O Velho e o Mar', a:'Ernest Hemingway', g:'Romance curto', c:'Estados Unidos', p:128, ap:true, pr:null, v:'Curto e direto'},
+{id:'harry', t:'Harry Potter e a Pedra Filosofal', a:'J. K. Rowling', g:'Fantasia', c:'Reino Unido', p:264, ap:true, pr:null, v:'Leitura leve'},
+{id:'jogos', t:'Jogos Vorazes', a:'Suzanne Collins', g:'Distopia', c:'Estados Unidos', p:400, ap:true, pr:null, v:'Ritmo de série'},
+{id:'alquimista', t:'O Alquimista', a:'Paulo Coelho', g:'Ficção', c:'Brasil', p:208, ap:true, pr:null, v:'Leitura leve'}
+];
+var SYN = {
+velhos: 'Um caçador encontra uma mala de dinheiro após um tiroteio no deserto do Texas e decide ficar com ela. Passa a ser perseguido por um assassino implacável, enquanto um xerife tenta entender tanta violência.',
+estrada: 'Um pai e seu filho atravessam a pé um mundo destruído em busca de comida e abrigo. É uma história dura, mas sobretudo sobre o cuidado entre os dois.',
+expresso: 'Um assassinato acontece num trem de luxo parado pela neve. O detetive Hercule Poirot interroga os passageiros, e todos parecem esconder algo.',
+vidaprivada: 'Cenas curtas e engraçadas do cotidiano da classe média brasileira, com amigos no bar, casa na serra, vizinhos e férias. Dá para ler uma por vez.',
+escola: 'Seleção de crônicas de Verissimo pensada para conquistar novos leitores, com mal-entendidos e situações absurdas do dia a dia.',
+mochileiro: 'Pouco antes de a Terra ser demolida para dar lugar a uma via expressa espacial, Arthur Dent escapa pegando carona numa nave. Aventura de ficção científica com humor britânico.',
+extraordinario: 'Auggie, um menino com uma diferença facial, entra numa escola nova no quinto ano e enfrenta olhares e preconceito enquanto tenta fazer amigos.',
+coragem: 'A pesquisadora Brené Brown explica como a vergonha e o medo de se expor nos travam, e por que mostrar vulnerabilidade é uma forma de coragem.',
+carandiru: 'O médico Drauzio Varella relata dez anos de trabalho voluntário na Casa de Detenção de São Paulo e o código não escrito que organizava a vida dos presos.',
+sobrevivendo: 'As letras do álbum de 1997 dos Racionais MC\'s, com texto de apresentação e fotos. Retrata violência, fé e sobrevivência na periferia.',
+capao: 'Rael, um adolescente da periferia de São Paulo, tenta escapar de um ambiente violento e arrumar um bom emprego, até se apaixonar pela namorada de um amigo.',
+quarto: 'Diário de Carolina Maria de Jesus, catadora de papel moradora de uma favela de São Paulo, sobre a fome e o cotidiano nos anos 1950.',
+budapeste: 'José Costa, um escritor que assina textos de outras pessoas, passa por Budapeste por acaso e se encanta pelo idioma húngaro, ficando dividido entre duas cidades e duas mulheres.',
+chumbo: 'Oito contos de Chico Buarque sobre pessoas comuns em situações estranhas, que vão do cômico ao cruel.',
+bras: 'Brás Cubas, já morto, conta a própria vida com ironia e humor negro, dos amores à ideia fixa de lançar um remédio. Capítulos curtos e narrador sarcástico.',
+estrangeiro: 'Meursault, um homem indiferente às convenções, leva a vida na Argélia até um crime mudar tudo e ele ser julgado mais pelo jeito de ser do que pelo ato.',
+velhomar: 'Um velho pescador cubano passa dias no mar tentando fisgar um peixe enorme, numa luta de resistência e dignidade.',
+harry: 'Aos 11 anos, Harry descobre que é bruxo e vai estudar em Hogwarts, onde faz amigos e começa a desvendar o mistério da pedra filosofal.',
+jogos: 'Num país futurista, jovens são sorteados para lutar até a morte num programa de TV. Katniss se oferece no lugar da irmã.',
+alquimista: 'Santiago, um jovem pastor, deixa sua terra para buscar um tesouro perto das pirâmides do Egito e aprende sobre seguir os próprios sonhos.'
+};
+var RATE = {
+velhos:{r:4.17,n:250000,src:'Goodreads'},
+estrada:{r:4.00,n:1040000,src:'Goodreads'},
+expresso:{r:4.20,n:740000,src:'Goodreads'},
+vidaprivada:{r:4.19,n:1036,src:'Goodreads'},
+mochileiro:{r:4.22,n:2000000,src:'Goodreads'},
+extraordinario:{r:4.36,n:1200000,src:'Goodreads'},
+coragem:{r:4.29,n:244000,src:'Goodreads'},
+carandiru:{r:4.4,n:14510,src:'Skoob'},
+sobrevivendo:{r:4.3,n:4536,src:'Skoob'},
+capao:{r:3.9,n:1625,src:'Skoob'},
+quarto:{r:4.5,n:37424,src:'Skoob'},
+budapeste:{r:3.8,n:7410,src:'Skoob'},
+bras:{r:4.1,n:81800,src:'Skoob'},
+estrangeiro:{r:4.03,n:1420000,src:'Goodreads'},
+velhomar:{r:3.81,n:1320000,src:'Goodreads'},
+harry:{r:4.47,n:11400000,src:'Goodreads'},
+jogos:{r:4.35,n:9970000,src:'Goodreads'},
+alquimista:{r:3.92,n:3600000,src:'Goodreads'}
+};
+var LS_KEY = 'estante-leitura-v1';
+function blank(){ return {read:{}, reading:null, progress:{}, notes:{}, custom:[], discarded:{}, focus:null, updated:0}; }
+function normalize(s){
+var b = blank();
+if(!s || typeof s !== 'object') return b;
+Object.keys(b).forEach(function(k){ if(s[k] !== undefined && s[k] !== null) b[k] = s[k]; });
+return b;
+}
+function loadLocal(){
+try{ var raw = localStorage.getItem(LS_KEY); if(raw) return normalize(JSON.parse(raw)); }catch(e){}
+return blank();
+}
+var state = loadLocal();
+var draft = {id:null, text:'', page:''};
+var backTo = 'estante';
+var view = 'estante', scrolls = {estante:0, livro:0, ranking:0, resumo:0};
+var filtro = 'todos', ordem = 'curtos', termo = '', rankFilter = 'todos';
+var shelfSel = null;
+var remoteRef = null, saveTimer = null, toastTimer = null, undoSnap = null;
+function $(id){ return document.getElementById(id); }
+function esc(s){ return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function books(){
+var base = BOOKS.map(function(b){ var o = {}; for(var k in b) o[k] = b[k]; o.s = SYN[b.id] || ''; var rt = RATE[b.id]; o.r = rt ? rt.r : null; o.rn = rt ? rt.n : 0; o.rs = rt ? rt.src : ''; return o; });
+return base.concat(state.custom.map(function(c){ return {id:c.id, t:c.t, a:c.a, g:c.g || 'Outro', c:'', p:c.p, pr:null, v:'Adicionado por você', s:c.s || '', custom:true}; }));
+}
+function byId(id){ return books().filter(function(b){ return b.id === id; })[0] || null; }
+function status(id){ if(state.read[id]) return 'lido'; if(state.reading === id) return 'lendo'; if(state.discarded[id]) return 'descartado'; return 'para-ler'; }
+function statusLabel(s){ return s === 'lido' ? 'lido' : s === 'lendo' ? 'lendo agora' : s === 'descartado' ? 'descartado' : 'para ler'; }
+function brl(n){ return 'R$ ' + n.toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2}); }
+function dm(iso){ try{ return new Date(iso).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}); }catch(e){ return ''; } }
+function pagesLabel(b){ return (b.ap ? '~' : '') + b.p; }
+function priceLabel(b){ return b.pr == null ? 'preço a conferir' : brl(b.pr); }
+function active(){ return books().filter(function(b){ return !state.discarded[b.id]; }); }
+/* notas dos leitores e ranking */
+function cmpRank(x,y){ return (y.r - x.r) || (y.rn - x.rn); }
+function ranks(){
+var m = {}, list = books().filter(function(b){ return b.r != null; }).sort(cmpRank);
+list.forEach(function(b,i){ m[b.id] = i + 1; });
+return {pos:m, total:list.length};
+}
+function fmtR(b){ return (b.rs === 'Skoob' ? b.r.toFixed(1) : b.r.toFixed(2)).replace('.', ','); }
+function fmtCount(b){
+var n = b.rn, txt;
+if(n >= 1e6) txt = (n / 1e6).toLocaleString('pt-BR', {maximumFractionDigits:1}) + (n < 2e6 ? ' milhão' : ' milhões');
+else if(n >= 1e5) txt = Math.round(n / 1e3).toLocaleString('pt-BR') + ' mil';
+else txt = n.toLocaleString('pt-BR');
+return ((n >= 1e5 || (b.rs === 'Goodreads' && n >= 1e4)) ? 'cerca de ' : '') + txt;
+}
+function starPill(b, rk){
+if(b.r == null) return '<span class="pill muted">sem nota</span>';
+return '<span class="pill star">★ ' + fmtR(b) + '</span>';
+}
+function rateBlock(b){
+if(b.r == null) return '<p class="rate-note">Ainda sem nota confirmada nos sites de leitores.</p>';
+return '<div class="rate"><div class="rate-top"><span class="rate-n">' + fmtR(b) + '</span><span class="rate-of">de 5</span></div>' +
+'<div class="track" role="img" aria-label="Nota ' + fmtR(b) + ' de 5"><div class="fill" style="width:' + Math.round(b.r / 5 * 100) + '%;background:var(--blue)"></div></div>' +
+'<p class="rate-note">' + fmtCount(b) + ' avaliações no ' + esc(b.rs) + '.</p></div>';
+}
+/* persistência */
+function save(){
+try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch(e){}
+clearTimeout(saveTimer);
+saveTimer = setTimeout(pushRemote, 500);
+}
+function pushRemote(){ if(!remoteRef) return; try{ remoteRef.set({state: state}).catch(function(){}); }catch(e){} }
+function commit(){ state.updated = Date.now(); save(); renderAll(); }
+var syncMsg = 'Seu progresso fica salvo neste navegador.';
+function initRemote(){
+if(!window.claude || typeof window.claude.use !== 'function') return;
+Promise.all([window.claude.use('db'), window.claude.use('user')]).then(function(r){
+var db = r[0], user = r[1];
+if(!db || !user) return null;
+return user.id().then(function(uid){
+if(!uid) return null;
+var ref = db.collection('data/users/' + uid).doc('estante');
+return ref.get().then(function(snap){
+remoteRef = ref;
+if(snap.exists){
+var d = snap.data();
+if(d && d.state && (d.state.updated || 0) > (state.updated || 0)){
+state = normalize(d.state);
+try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch(e){}
+renderAll();
+} else if(state.updated){ pushRemote(); }
+} else if(state.updated){ pushRemote(); }
+syncMsg = 'Seu progresso fica salvo na sua conta.';
+renderResumo();
+});
+});
+}).catch(function(){});
+}
+/* aviso com desfazer */
+function toast(msg, snap){
+$('toast-msg').textContent = msg;
+undoSnap = snap || null;
+$('toast-undo').hidden = !snap;
+$('toast').hidden = false;
+clearTimeout(toastTimer);
+toastTimer = setTimeout(hideToast, snap ? 6000 : 2800);
+}
+function hideToast(){ $('toast').hidden = true; undoSnap = null; }
+function snapshot(){ return JSON.stringify(state); }
+/* navegação */
+function go(next){
+hideToast();
+scrolls[view] = window.pageYOffset || 0;
+view = next;
+['estante','livro','ranking','resumo'].forEach(function(v){ $('v-' + v).hidden = (v !== view); });
+Array.prototype.forEach.call(document.querySelectorAll('.tab'), function(t){ t.setAttribute('aria-current', t.getAttribute('data-go') === view ? 'page' : 'false'); });
+$('fab').hidden = (view !== 'estante');
+renderAll();
+var y = view === 'livro' ? 0 : (scrolls[view] || 0);
+requestAnimationFrame(function(){ window.scrollTo(0, y); });
+}
+function openBook(id){ if(view !== 'livro') backTo = view; state.focus = id; draft = {id:id, text:'', page:''}; go('livro'); }
+/* ações */
+function startReading(id){
+if(state.read[id]) return;
+state.reading = id; state.focus = id;
+if(state.progress[id] == null) state.progress[id] = 0;
+commit();
+}
+function markRead(id, on){
+var snap = snapshot(), b = byId(id);
+if(on){
+state.read[id] = new Date().toISOString();
+if(state.reading === id) state.reading = null;
+if(b) state.progress[id] = b.p;
+} else { delete state.read[id]; }
+commit();
+toast(on ? 'Marcado como lido.' : 'Marcação removida.', snap);
+}
+function setProgress(id, v){
+var b = byId(id); if(!b) return;
+if(!isFinite(v)) v = 0;
+state.progress[id] = Math.max(0, Math.min(Math.round(v), b.p));
+commit();
+}
+function addNote(){
+var id = state.focus; if(!id) return;
+var text = draft.text.trim(); if(!text) return;
+var pg = null;
+if(draft.page !== '' && isFinite(Number(draft.page))) pg = Number(draft.page);
+else if(state.reading === id && state.progress[id] > 0) pg = state.progress[id];
+(state.notes[id] = state.notes[id] || []).push({id: Date.now().toString(36), ts: new Date().toISOString(), page: pg, text: text});
+draft.text = ''; draft.page = '';
+commit();
+toast('Anotação salva.');
+}
+function delNote(bid, nid){
+var snap = snapshot();
+state.notes[bid] = (state.notes[bid] || []).filter(function(n){ return n.id !== nid; });
+commit();
+toast('Anotação apagada.', snap);
+}
+function descartar(id){
+var b = byId(id); if(!b || state.read[id]) return;
+var snap = snapshot();
+state.discarded[id] = new Date().toISOString();
+if(state.reading === id) state.reading = null;
+commit();
+go('estante');
+toast('Livro descartado.', snap);
+}
+function restaurar(id){ var snap = snapshot(); delete state.discarded[id]; commit(); toast('Livro de volta na estante.', snap); }
+function removeCustom(id){
+var snap = snapshot();
+state.custom = state.custom.filter(function(c){ return c.id !== id; });
+delete state.read[id]; delete state.notes[id]; delete state.progress[id]; delete state.discarded[id];
+if(state.reading === id) state.reading = null;
+if(state.focus === id) state.focus = null;
+commit();
+go('estante');
+toast('Livro excluído.', snap);
+}
+function addBook(){
+var t = $('novo-titulo'), a = $('novo-autor'), p = $('novo-paginas'), g = $('novo-genero'), sy = $('novo-sinopse'), msg = $('novo-msg');
+var title = t.value.trim(), pages = parseInt(p.value, 10);
+msg.textContent = '';
+if(!title){ msg.textContent = 'Informe o título do livro.'; t.focus(); return; }
+if(!(pages > 0)){ msg.textContent = 'Informe o número de páginas.'; p.focus(); return; }
+var snap = snapshot();
+var id = 'c' + Date.now().toString(36);
+state.custom.push({id:id, t:title, a:a.value.trim() || 'Autor não informado', p:pages, g:g.value.trim(), s:sy.value.trim()});
+t.value = ''; a.value = ''; p.value = ''; g.value = ''; sy.value = '';
+closeDialog();
+state.focus = id;
+commit();
+openBook(id);
+toast('Livro adicionado.', snap);
+}
+function openDialog(){
+var d = $('dlg-add'); $('novo-msg').textContent = '';
+if(typeof d.showModal === 'function') d.showModal(); else d.setAttribute('open','');
+setTimeout(function(){ $('novo-titulo').focus(); }, 60);
+}
+function closeDialog(){
+var d = $('dlg-add');
+if(typeof d.close === 'function'){ if(d.open) d.close(); } else d.removeAttribute('open');
+}
+/* ícones */
+var ICON_BACK = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>';
+/* estante */
+function visibleBooks(){
+var q = termo.trim().toLowerCase();
+var list = books().filter(function(b){
+var s = status(b.id);
+if(filtro === 'todos' && s === 'descartado') return false;
+if(filtro !== 'todos' && s !== filtro) return false;
+if(!q) return true;
+return (b.t + ' ' + b.a + ' ' + b.g + ' ' + b.c + ' ' + b.v + ' ' + (b.s || '')).toLowerCase().indexOf(q) !== -1;
+});
+if(ordem === 'ranking') list.sort(function(x,y){
+var a = x.r != null, b = y.r != null;
+if(a && b) return cmpRank(x,y);
+return a ? -1 : (b ? 1 : 0);
+});
+else if(ordem === 'curtos') list.sort(function(x,y){ return (x.p - y.p) || ((y.r || 0) - (x.r || 0)); });
+else if(ordem === 'longos') list.sort(function(x,y){ return y.p - x.p; });
+else if(ordem === 'titulo') list.sort(function(x,y){ return x.t.localeCompare(y.t, 'pt-BR'); });
+return list;
+}
+function renderChips(){
+var n = {todos:0, 'para-ler':0, lendo:0, lido:0, descartado:0};
+books().forEach(function(b){ var s = status(b.id); n[s]++; if(s !== 'descartado') n.todos++; });
+Array.prototype.forEach.call(document.querySelectorAll('#chips .chip'), function(c){
+var f = c.getAttribute('data-f');
+c.querySelector('.n').textContent = n[f];
+c.setAttribute('aria-pressed', f === filtro ? 'true' : 'false');
+});
+}
+function renderList(){
+var list = visibleBooks(), host = $('lista'), rk = ranks();
+$('count').textContent = list.length + (list.length === 1 ? ' livro' : ' livros');
+if(!list.length){
+var msg = filtro === 'descartado' ? 'Você ainda não descartou nenhum livro.' : 'Nenhum livro encontrado. Limpe a busca ou troque o filtro.';
+host.innerHTML = '<li class="empty-state"><p>' + msg + '</p></li>';
+return;
+}
+host.innerHTML = list.map(function(b){
+var s = status(b.id);
+var tag = s === 'lendo' ? '<span class="pill tag">Lendo agora</span>' : s === 'lido' ? '<span class="pill tag lido">Lido em ' + dm(state.read[b.id]) + '</span>' : s === 'descartado' ? '<span class="pill tag off">Descartado</span>' : '';
+var nn = (state.notes[b.id] || []).length;
+return '<li class="item ' + s + '">' +
+'<label class="chk"><input type="checkbox" data-act="check" data-id="' + esc(b.id) + '"' + (s === 'lido' ? ' checked' : '') + (s === 'descartado' ? ' disabled' : '') + '><span class="box"></span><span class="sr">Marcar ' + esc(b.t) + ' como lido</span></label>' +
+'<button class="main" type="button" data-act="abrir" data-id="' + esc(b.id) + '">' +
+'<span class="t">' + esc(b.t) + '</span><span class="a">' + esc(b.a) + '</span>' +
+(b.s ? '<span class="s">' + esc(b.s) + '</span>' : '') +
+'<span class="pills">' + tag + starPill(b, rk) + '<span class="pill">' + pagesLabel(b) + ' páginas</span><span class="pill' + (b.pr == null ? ' muted' : '') + '">' + priceLabel(b) + '</span>' +
+(nn ? '<span class="pill">' + nn + (nn === 1 ? ' anotação' : ' anotações') + '</span>' : '') + '</span>' +
+'</button></li>';
+}).join('');
+}
+/* livro */
+function buyUrl(b){
+var autor = (b.a && b.a !== 'Autor não informado') ? ' ' + b.a : '';
+return 'https://www.google.com/search?q=' + encodeURIComponent('comprar livro ' + b.t + autor);
+}
+var ICON_EXT = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>';
+function renderLivro(){
+var host = $('v-livro');
+if(draft.id !== state.focus){ draft = {id: state.focus, text:'', page:''}; }
+var b = state.focus ? byId(state.focus) : null;
+if(!b){
+host.innerHTML = '<div class="empty-state"><h2>Nenhum livro aberto</h2><p>Escolha um livro na estante para ver os detalhes e fazer anotações.</p>' +
+'<button class="btn primary block" type="button" data-act="curto">Sugerir o mais curto</button>' +
+'<button class="btn block" type="button" data-go="estante">Ver a estante</button></div>';
+return;
+}
+var s = status(b.id);
+var prog = Math.max(0, Math.min(state.progress[b.id] || 0, b.p)), pct = Math.round(prog / b.p * 100);
+var tag = s === 'lendo' ? '<span class="pill tag">Lendo agora</span>' : s === 'lido' ? '<span class="pill tag lido">Lido em ' + dm(state.read[b.id]) + '</span>' : s === 'descartado' ? '<span class="pill tag off">Descartado</span>' : '';
+var h = '<button class="back" type="button" data-act="voltar">' + ICON_BACK + (({resumo:'Resumo', ranking:'Ranking'})[backTo] || 'Estante') + '</button>';
+h += '<div class="bk-head">' + tag + '<h2><a class="buy" href="' + esc(buyUrl(b)) + '" target="_blank" rel="noopener noreferrer">' + esc(b.t) + ' ' + ICON_EXT + '<span class="sr"> (abre a busca no Google em outra aba)</span></a></h2><p class="by">' + esc(b.a) + '</p><p class="bk-buy">Toque no título para buscar onde comprar no Google.</p></div>';
+h += '<div class="pills"><span class="pill">' + esc(b.g) + '</span>' + (b.c ? '<span class="pill">' + esc(b.c) + '</span>' : '') +
+'<span class="pill">' + pagesLabel(b) + ' páginas</span><span class="pill' + (b.pr == null ? ' muted' : '') + '">' + priceLabel(b) + '</span></div>';
+if(b.v) h += '<p class="bk-vibe">' + esc(b.v) + '</p>';
+h += rateBlock(b);
+if(b.s){
+if(s === 'lendo') h += '<details class="bk-more"><summary>Sobre o livro</summary><p class="bk-syn">' + esc(b.s) + '</p></details>';
+else h += '<p class="bk-syn">' + esc(b.s) + '</p>';
+}
+h += '<div class="bk-act">';
+if(s === 'lendo'){
+h += '<div class="progress"><div class="track" role="progressbar" aria-valuemin="0" aria-valuemax="' + b.p + '" aria-valuenow="' + prog + '"><div class="fill" style="width:' + pct + '%"></div></div>' +
+'<p class="pinfo">Página ' + prog + ' de ' + b.p + ', ' + pct + '%</p>' +
+'<div class="pstep"><button class="btn" type="button" data-act="menos" aria-label="Voltar 10 páginas">−10</button>' +
+'<label><span class="sr">Página atual</span><input type="number" id="pg-atual" min="0" max="' + b.p + '" inputmode="numeric" value="' + prog + '"></label>' +
+'<button class="btn" type="button" data-act="mais" aria-label="Avançar 10 páginas">+10</button></div></div>' +
+'<button class="btn primary block" type="button" data-act="concluir">Marcar como lido</button>' +
+'<button class="btn quiet block" type="button" data-act="parar">Parar de ler</button>';
+} else if(s === 'para-ler'){
+h += '<button class="btn primary block" type="button" data-act="comecar">Ler agora</button>' +
+'<button class="btn quiet block" type="button" data-act="descartar">Descartar este livro</button>';
+} else if(s === 'lido'){
+h += '<button class="btn quiet block" type="button" data-act="desmarcar">Desmarcar como lido</button>';
+} else {
+h += '<button class="btn primary block" type="button" data-act="restaurar">Restaurar na estante</button>' +
+(b.custom ? '<button class="btn quiet block" type="button" data-act="remover">Excluir de vez</button>' : '');
+}
+h += '</div>';
+h += '<div class="notes"><h3>Anotações</h3>' +
+'<textarea id="nota-texto" placeholder="O que chamou sua atenção? Uma frase, uma ideia, uma dúvida." aria-label="Nova anotação"></textarea>' +
+'<div class="noteline"><label><span class="sr">Página da anotação</span><input type="number" id="nota-pg" min="0" max="' + b.p + '" inputmode="numeric" placeholder="' + (s === 'lendo' && prog ? 'Pág. ' + prog : 'Página') + '"></label>' +
+'<button class="btn primary" type="button" data-act="nota">Salvar anotação</button></div>';
+var list = (state.notes[b.id] || []).slice().reverse();
+if(!list.length){ h += '<p class="empty" style="margin-top:16px">Nenhuma anotação ainda. Escreva a primeira acima.</p>'; }
+else {
+h += '<ul class="notelist">' + list.map(function(n){
+return '<li class="note"><p>' + esc(n.text) + '</p><div class="meta"><span>' + (n.page != null ? 'Página ' + n.page + ', ' : '') + dm(n.ts) + '</span>' +
+'<button class="link" type="button" data-act="apagar" data-nid="' + esc(n.id) + '">Apagar</button></div></li>';
+}).join('') + '</ul>';
+}
+h += '</div>';
+host.innerHTML = h;
+var ta = $('nota-texto'), pg = $('nota-pg');
+if(ta) ta.value = draft.text;
+if(pg) pg.value = draft.page;
+}
+/* ranking */
+function renderRanking(){
+var host = $('v-ranking');
+var rated = books().filter(function(b){ return b.r != null && !state.discarded[b.id]; }).sort(cmpRank);
+var list = rankFilter === 'nao-li' ? rated.filter(function(b){ return !state.read[b.id]; }) : rated;
+var un = books().filter(function(b){ return b.r == null && !state.discarded[b.id]; });
+var h = '<header class="hero"><h1>Ranking</h1><p class="lead">Os livros da estante em ordem da nota média dos leitores, da maior para a menor.</p></header>';
+h += '<div class="rchips" role="group" aria-label="Filtrar o ranking">' +
+'<button class="chip" data-rf="todos" aria-pressed="' + (rankFilter === 'todos') + '">Todos</button>' +
+'<button class="chip" data-rf="nao-li" aria-pressed="' + (rankFilter === 'nao-li') + '">Ainda não li</button></div>';
+if(!list.length){
+h += '<div class="empty-state"><p>Você já leu todos os livros com nota. Troque o filtro para ver o ranking completo.</p></div>';
+} else {
+h += '<ol class="rank">' + list.map(function(b){
+var st = status(b.id);
+var tag = st === 'lendo' ? ' <span class="pill tag">Lendo agora</span>' : st === 'lido' ? ' <span class="pill tag lido">Lido</span>' : '';
+return '<li class="rrow ' + st + '">' +
+'<div class="rname"><button class="rtitle" type="button" data-act="abrir" data-id="' + esc(b.id) + '">' + esc(b.t) + '</button>' +
+'<span class="a">' + esc(b.a) + '</span><span class="m">' + fmtCount(b) + ' avaliações no ' + esc(b.rs) + '</span>' + tag + '</div>' +
+'<div class="rscore">' + fmtR(b) + '<small>de 5</small></div>' +
+'<div class="rbar" aria-hidden="true"><i style="width:' + Math.round(b.r / 5 * 100) + '%"></i></div></li>';
+}).join('') + '</ol>';
+}
+if(un.length){
+h += '<h2 class="rk-sub">Sem nota ainda</h2><p class="rk-hint">Não encontrei uma nota confiável para estes livros.</p><ul class="rk-un">' +
+un.map(function(b){ return '<li><button type="button" data-act="abrir" data-id="' + esc(b.id) + '">' + esc(b.t) + ', ' + esc(b.a) + '</button></li>'; }).join('') + '</ul>';
+}
+h += '<p class="rk-foot">As notas vêm do Goodreads, com leitores do mundo todo, e do Skoob, com leitores brasileiros. Cada site tem sua régua, então diferenças pequenas entre os dois não dizem muito. Notas e quantidades mudam com o tempo.</p>';
+host.innerHTML = h;
+}
+/* resumo */
+function renderResumo(){
+var host = $('v-resumo');
+var all = active(), lidos = all.filter(function(b){ return state.read[b.id]; });
+var pag = lidos.reduce(function(n,b){ return n + b.p; }, 0);
+if(state.reading && !state.read[state.reading]){ var rb = byId(state.reading); if(rb) pag += Math.min(state.progress[state.reading] || 0, rb.p); }
+if(!shelfSel || !all.some(function(b){ return b.id === shelfSel; })){ shelfSel = (state.reading && !state.discarded[state.reading]) ? state.reading : (all[0] ? all[0].id : null); }
+var pctTot = all.length ? Math.round(lidos.length / all.length * 100) : 0;
+var nd = Object.keys(state.discarded).filter(function(id){ return byId(id) && !state.read[id]; }).length;
+var h = '<header class="hero"><h1>Resumo</h1><p class="lead">Seu progresso de leitura em um só lugar.</p></header>';
+h += '<div class="stats"><div class="stat"><b>' + lidos.length + '/' + all.length + '</b><span>livros lidos</span></div>' +
+'<div class="stat"><b>' + pag.toLocaleString('pt-BR') + '</b><span>páginas lidas</span></div>' +
+'<div class="stat"><b>' + (state.reading ? 1 : 0) + '</b><span>lendo agora</span></div></div>';
+h += '<div class="total"><div class="row"><span>Estante concluída</span><span>' + pctTot + '%</span></div>' +
+'<div class="track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + pctTot + '"><div class="fill" style="width:' + pctTot + '%"></div></div></div>';
+h += '<h2 class="shelf-title">Sua estante</h2><p class="shelf-hint">Cada lombada é um livro. Quanto mais alta, mais páginas. Toque numa lombada ou use os botões abaixo para navegar.</p>';
+h += '<div class="shelf" id="shelf">' + all.map(function(b){
+var st = status(b.id), ht = 36 + Math.round(Math.min(b.p, 420) / 420 * 108);
+return '<button type="button" class="spine ' + st + (shelfSel === b.id ? ' sel' : '') + '" style="height:' + ht + 'px" data-act="spine" data-id="' + esc(b.id) + '" aria-label="' + esc(b.t) + ', ' + statusLabel(st) + '"></button>';
+}).join('') + '</div>';
+h += '<div class="legend"><span><i class="sw lido"></i>Lido</span><span><i class="sw lendo"></i>Lendo</span><span><i class="sw"></i>Para ler</span></div>';
+var sb = shelfSel ? byId(shelfSel) : null;
+if(sb){
+h += '<div class="pick"><p><b>' + esc(sb.t) + '</b><small>' + esc(sb.a) + ', ' + pagesLabel(sb) + ' páginas, ' + statusLabel(status(sb.id)) + '</small></p>' +
+'<div class="pickbtns"><button class="btn small" type="button" data-act="spine-prev">Anterior</button>' +
+'<button class="btn small primary" type="button" data-act="abrir" data-id="' + esc(sb.id) + '">Abrir livro</button>' +
+'<button class="btn small" type="button" data-act="spine-next">Próximo</button></div></div>';
+}
+if(nd){ h += '<div class="linkrow"><button class="btn block" type="button" data-act="ver-descartados">Ver ' + nd + (nd === 1 ? ' livro descartado' : ' livros descartados') + '</button></div>'; }
+h += '<p class="sync" id="sync">' + esc(syncMsg) + '</p>';
+host.innerHTML = h;
+}
+function renderTabs(){
+var other = (view === 'livro' && state.focus && state.focus !== state.reading);
+$('tab-livro-label').textContent = (state.reading && !other) ? 'Lendo' : 'Livro';
+$('dot').hidden = !state.reading;
+}
+function renderAll(){
+renderTabs();
+if(view === 'estante'){ renderChips(); renderList(); }
+else if(view === 'livro'){ renderLivro(); }
+else if(view === 'ranking'){ renderRanking(); }
+else { renderResumo(); }
+}
+/* eventos */
+document.addEventListener('click', function(e){
+var go1 = e.target.closest('[data-go]');
+if(go1 && go1.getAttribute('data-go') !== view){
+var dest = go1.getAttribute('data-go');
+if(dest === 'livro' && state.reading){ state.focus = state.reading; draft = {id:state.focus, text:'', page:''}; backTo = view; }
+go(dest); return;
+}
+var rf = e.target.closest('[data-rf]');
+if(rf){ rankFilter = rf.getAttribute('data-rf'); renderRanking(); return; }
+var el = e.target.closest('[data-act]'); if(!el || el.type === 'checkbox') return;
+var act = el.getAttribute('data-act'), id = el.getAttribute('data-id');
+if(act === 'abrir') openBook(id);
+else if(act === 'voltar') go(backTo);
+else if(act === 'comecar') startReading(state.focus);
+else if(act === 'parar'){ var s1 = snapshot(); state.reading = null; commit(); toast('Leitura pausada.', s1); }
+else if(act === 'concluir') markRead(state.focus, true);
+else if(act === 'desmarcar') markRead(state.focus, false);
+else if(act === 'descartar') descartar(state.focus);
+else if(act === 'restaurar') restaurar(state.focus);
+else if(act === 'remover') removeCustom(state.focus);
+else if(act === 'mais') setProgress(state.focus, (state.progress[state.focus] || 0) + 10);
+else if(act === 'menos') setProgress(state.focus, (state.progress[state.focus] || 0) - 10);
+else if(act === 'nota') addNote();
+else if(act === 'apagar') delNote(state.focus, el.getAttribute('data-nid'));
+else if(act === 'spine'){ shelfSel = id; renderResumo(); }
+else if(act === 'spine-prev' || act === 'spine-next'){
+var ls = active(), ix = 0;
+ls.forEach(function(b,i){ if(b.id === shelfSel) ix = i; });
+ix = (ix + (act === 'spine-next' ? 1 : -1) + ls.length) % ls.length;
+shelfSel = ls[ix].id; renderResumo();
+}
+else if(act === 'ver-descartados'){ filtro = 'descartado'; go('estante'); }
+else if(act === 'curto'){
+var pend = books().filter(function(b){ return !state.read[b.id] && !state.discarded[b.id]; }).sort(function(x,y){ return x.p - y.p; })[0];
+if(pend){ startReading(pend.id); go('livro'); }
+}
+});
+document.addEventListener('change', function(e){
+var t = e.target;
+if(t.getAttribute && t.getAttribute('data-act') === 'check') markRead(t.getAttribute('data-id'), t.checked);
+else if(t.id === 'pg-atual') setProgress(state.focus, parseInt(t.value, 10));
+else if(t.id === 'ordem'){ ordem = t.value; renderList(); }
+});
+document.addEventListener('input', function(e){
+var t = e.target;
+if(t.id === 'nota-texto') draft.text = t.value;
+else if(t.id === 'nota-pg') draft.page = t.value;
+else if(t.id === 'busca'){ termo = t.value; renderList(); }
+});
+document.addEventListener('keydown', function(e){
+if(e.target.id === 'nota-texto' && e.key === 'Enter' && (e.ctrlKey || e.metaKey)){ e.preventDefault(); addNote(); }
+});
+$('chips').addEventListener('click', function(e){
+var c = e.target.closest('.chip'); if(!c) return;
+filtro = c.getAttribute('data-f'); renderChips(); renderList();
+});
+$('fab').addEventListener('click', openDialog);
+$('dlg-close').addEventListener('click', closeDialog);
+$('add-cancel').addEventListener('click', closeDialog);
+$('form-add').addEventListener('submit', function(e){ e.preventDefault(); addBook(); });
+$('toast-undo').addEventListener('click', function(){
+if(!undoSnap) return;
+state = normalize(JSON.parse(undoSnap)); hideToast(); commit();
+});
+$('dlg-add').addEventListener('click', function(e){ if(e.target === $('dlg-add')) closeDialog(); });
+if(!state.focus && state.reading) state.focus = state.reading;
+renderAll();
+initRemote();
+})();
+</script>
+</body>
+</html>
