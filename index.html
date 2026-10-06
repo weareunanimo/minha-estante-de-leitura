@@ -413,8 +413,17 @@ function loadCovers(){ try{ var r = localStorage.getItem(COV_KEY); if(r){ var o 
 var covers = loadCovers();
 var BUILTIN = {};
 var AUTO_COVERS = true;
-var AUTO_KEY = 'estante-capas-auto-v1', AUTO_TTL_NEG = 24 * 3600 * 1000;
-function loadAuto(){ try{ var r = localStorage.getItem(AUTO_KEY); if(r){ var o = JSON.parse(r); if(o && typeof o === 'object') return o; } }catch(e){} return {}; }
+var AUTO_KEY = 'estante-capas-auto-v2', AUTO_KEY_OLD = 'estante-capas-auto-v1', AUTO_TTL_NEG = 24 * 3600 * 1000;
+function loadAuto(){
+try{
+var r = localStorage.getItem(AUTO_KEY);
+if(r){ var o = JSON.parse(r); if(o && typeof o === 'object') return o; }
+var old = localStorage.getItem(AUTO_KEY_OLD), mig = {};
+if(old){ var p = JSON.parse(old) || {}; Object.keys(p).forEach(function(k){ if(p[k] && p[k].u) mig[k] = p[k]; }); }
+return mig;
+}catch(e){}
+return {};
+}
 var autoUrls = loadAuto();
 function saveAuto(){ try{ localStorage.setItem(AUTO_KEY, JSON.stringify(autoUrls)); }catch(e){} }
 function autoSrc(id){ var a = autoUrls[id]; return (a && a.u) ? a.u : null; }
@@ -426,30 +435,59 @@ var g = ' ' + normT(got) + ' ';
 var hit = w.filter(function(x){ return g.indexOf(' ' + x) !== -1; }).length;
 return hit / w.length >= 0.6;
 }
-function googleCover(b){
-var q = 'intitle:' + b.t + ((b.a && b.a.indexOf('não informado') < 0) ? ' inauthor:' + b.a : '');
-var url = 'https://www.googleapis.com/books/v1/volumes?q=' + encodeURIComponent(q) + '&langRestrict=pt&printType=books&maxResults=10&fields=items(volumeInfo(title,imageLinks))';
+var ALT_TITLES = {
+velhos: ['No Country for Old Men'],
+estrada: ['The Road'],
+expresso: ['Murder on the Orient Express'],
+mochileiro: ['The Hitchhikers Guide to the Galaxy'],
+extraordinario: ['Wonder'],
+coragem: ['Daring Greatly'],
+carandiru: ['Carandiru Station'],
+quarto: ['Child of the Dark'],
+budapeste: ['Budapest'],
+bras: ['The Posthumous Memoirs of Bras Cubas', 'Epitaph of a Small Winner'],
+estrangeiro: ['The Stranger', 'The Outsider', 'Etranger'],
+velhomar: ['The Old Man and the Sea'],
+harry: ['Harry Potter and the Sorcerers Stone', 'Harry Potter and the Philosophers Stone'],
+jogos: ['The Hunger Games'],
+alquimista: ['The Alchemist']
+};
+function gbSearch(title, author, pt, withAuthor){
+var q = 'intitle:' + title + ((withAuthor && author && author.indexOf('não informado') < 0) ? ' inauthor:' + author : '');
+var url = 'https://www.googleapis.com/books/v1/volumes?q=' + encodeURIComponent(q) + (pt ? '&langRestrict=pt' : '') + '&printType=books&maxResults=10&fields=items(volumeInfo(title,imageLinks))';
 return fetch(url).then(function(r){ if(!r.ok) throw new Error('http ' + r.status); return r.json(); }).then(function(j){
-var it = (j.items || []).filter(function(x){ var v = x.volumeInfo || {}; return v.imageLinks && (v.imageLinks.thumbnail || v.imageLinks.smallThumbnail) && titleOk(b.t, v.title || ''); })[0];
+var it = (j.items || []).filter(function(x){ var v = x.volumeInfo || {}; return v.imageLinks && (v.imageLinks.thumbnail || v.imageLinks.smallThumbnail) && titleOk(title, v.title || ''); })[0];
 if(!it) return null;
 var l = it.volumeInfo.imageLinks;
 return (l.thumbnail || l.smallThumbnail).replace(/^http:/, 'https:').replace('&edge=curl', '');
 });
 }
-function openLibCover(b){
-var url = 'https://openlibrary.org/search.json?title=' + encodeURIComponent(b.t) + '&author=' + encodeURIComponent(b.a || '') + '&limit=5&fields=title,cover_i';
+function olSearch(title, author){
+var url = 'https://openlibrary.org/search.json?title=' + encodeURIComponent(title) + '&author=' + encodeURIComponent(author || '') + '&limit=5&fields=title,cover_i';
 return fetch(url).then(function(r){ if(!r.ok) throw new Error('http ' + r.status); return r.json(); }).then(function(j){
-var d = (j.docs || []).filter(function(x){ return x.cover_i && titleOk(b.t, x.title || ''); })[0];
+var d = (j.docs || []).filter(function(x){ return x.cover_i && titleOk(title, x.title || ''); })[0];
 return d ? 'https://covers.openlibrary.org/b/id/' + d.cover_i + '-M.jpg' : null;
 });
 }
 function findCover(b){
-return googleCover(b).catch(function(){ return null; }).then(function(u){
-if(u) return u;
-return openLibCover(b).catch(function(){ return null; });
+var alts = ALT_TITLES[b.id] || [], steps = [], limited = false, i = 0;
+steps.push(function(){ return gbSearch(b.t, b.a, true, true); });
+steps.push(function(){ return gbSearch(b.t, b.a, false, true); });
+steps.push(function(){ return gbSearch(b.t, b.a, true, false); });
+alts.forEach(function(t){ steps.push(function(){ return gbSearch(t, b.a, false, true); }); });
+steps.push(function(){ return olSearch(b.t, b.a); });
+alts.forEach(function(t){ steps.push(function(){ return olSearch(t, b.a); }); });
+function next(){
+if(i >= steps.length) return Promise.resolve({u: null, limited: limited});
+var st = steps[i++];
+return st().catch(function(err){ if(err && String(err.message).indexOf('429') !== -1) limited = true; return null; }).then(function(u){
+if(u) return {u: u, limited: false};
+return new Promise(function(res){ setTimeout(res, 100); }).then(next);
 });
 }
-var autoQueue = [], autoBusy = false;
+return next();
+}
+var autoQueue = [], autoActive = 0, AUTO_PAR = 3;
 function ensureAuto(b){
 if(!AUTO_COVERS || !b || covers[b.id] || BUILTIN[b.id]) return;
 var a = autoUrls[b.id];
@@ -458,19 +496,22 @@ if(autoQueue.indexOf(b.id) === -1) autoQueue.push(b.id);
 runAuto();
 }
 function runAuto(){
-if(autoBusy) return;
-var id = autoQueue.shift();
-if(!id) return;
+while(autoActive < AUTO_PAR && autoQueue.length){ startOne(autoQueue.shift()); }
+}
+function startOne(id){
 var b = byId(id);
-if(!b){ runAuto(); return; }
-autoBusy = true;
-findCover(b).then(function(u){
-autoUrls[id] = {u: u || null, t: Date.now()};
+if(!b) return;
+autoActive++;
+var wait = 200;
+findCover(b).then(function(res){
+if(res.u){ autoUrls[id] = {u: res.u, t: Date.now()}; }
+else if(res.limited){ autoUrls[id] = {u: null, t: Date.now() - AUTO_TTL_NEG + 5 * 60 * 1000}; wait = 4000; }
+else { autoUrls[id] = {u: null, t: Date.now()}; }
 saveAuto();
 refreshCover(id);
 }).catch(function(){}).then(function(){
-autoBusy = false;
-setTimeout(runAuto, 350);
+autoActive--;
+setTimeout(runAuto, wait);
 });
 }
 function refreshCover(id){
@@ -987,7 +1028,7 @@ $('dlg-add').addEventListener('click', function(e){ if(e.target === $('dlg-add')
 if(!state.focus && state.reading) state.focus = state.reading;
 renderAll();
 initRemote();
-if(AUTO_COVERS){ books().forEach(function(b){ ensureAuto(b); }); }
+if(AUTO_COVERS){ visibleBooks().concat(books()).forEach(function(b){ ensureAuto(b); }); }
 })();
 </script>
 </body>
