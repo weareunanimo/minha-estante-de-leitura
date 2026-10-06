@@ -175,6 +175,7 @@ textarea{font-family:var(--serif);font-size:18px;line-height:1.5;resize:vertical
 .bk-info{width:100%;}
 .cvbtns{margin-top:10px;display:grid;gap:8px;}
 .cv-note{margin:0;color:var(--muted);font-size:13px;line-height:1.35;text-align:center;}
+.cvbtns a.btn{text-decoration:none;}
 @media (min-width:560px){
 .bk-top{grid-template-columns:200px 1fr;justify-items:stretch;align-items:start;gap:24px;}
 .bk-cover{width:200px;}
@@ -413,27 +414,35 @@ function loadCovers(){ try{ var r = localStorage.getItem(COV_KEY); if(r){ var o 
 var covers = loadCovers();
 var BUILTIN = {};
 var AUTO_COVERS = true;
-var AUTO_KEY = 'estante-capas-auto-v2', AUTO_KEY_OLD = 'estante-capas-auto-v1', AUTO_TTL_NEG = 24 * 3600 * 1000;
-function loadAuto(){
-try{
-var r = localStorage.getItem(AUTO_KEY);
-if(r){ var o = JSON.parse(r); if(o && typeof o === 'object') return o; }
-var old = localStorage.getItem(AUTO_KEY_OLD), mig = {};
-if(old){ var p = JSON.parse(old) || {}; Object.keys(p).forEach(function(k){ if(p[k] && p[k].u) mig[k] = p[k]; }); }
-return mig;
-}catch(e){}
-return {};
-}
+var AUTO_KEY = 'estante-capas-auto-v3', AUTO_TTL_NEG = 24 * 3600 * 1000;
+function loadAuto(){ try{ var r = localStorage.getItem(AUTO_KEY); if(r){ var o = JSON.parse(r); if(o && typeof o === 'object') return o; } }catch(e){} return {}; }
 var autoUrls = loadAuto();
 function saveAuto(){ try{ localStorage.setItem(AUTO_KEY, JSON.stringify(autoUrls)); }catch(e){} }
 function autoSrc(id){ var a = autoUrls[id]; return (a && a.u) ? a.u : null; }
 function normT(x){ var d = String(x).toLowerCase().normalize('NFD'), o = ''; for(var i = 0; i < d.length; i++){ var c = d.charCodeAt(i); if(c < 768 || c > 879) o += d.charAt(i); } return o.replace(/[^a-z0-9 ]/g, ' ').replace(/ +/g, ' ').trim(); }
-function titleOk(want, got){
-var w = normT(want).split(' ').filter(function(x){ return x.length > 2; });
-if(!w.length) return true;
-var g = ' ' + normT(got) + ' ';
-var hit = w.filter(function(x){ return g.indexOf(' ' + x) !== -1; }).length;
-return hit / w.length >= 0.6;
+function authKey(a){
+if(!a || String(a).indexOf('não informado') !== -1) return '';
+var t = normT(a).split(' ').filter(function(x){ return x.length >= 4; });
+return t.length ? t[t.length - 1] : '';
+}
+function matchOk(wantT, wantA, gotT, gotAuthors){
+var w = normT(wantT).split(' ').filter(function(x){ return x.length > 2; });
+var gw = normT(gotT).split(' ').filter(function(x){ return x.length > 2; });
+if(!w.length || !gw.length) return false;
+var g = ' ' + normT(gotT) + ' ';
+var hit = w.filter(function(x){ return g.indexOf(' ' + x + ' ') !== -1; }).length;
+if(hit / w.length < 0.8) return false;
+if(gw.length > w.length + 5) return false;
+var k = authKey(wantA);
+if(k){
+var as = ' ' + normT((gotAuthors || []).join(' ')) + ' ';
+if(as.indexOf(' ' + k + ' ') === -1) return false;
+}
+return true;
+}
+function exactFirst(list, title){
+var t = normT(title);
+return list.filter(function(x){ return normT(x.t) === t; }).concat(list.filter(function(x){ return normT(x.t) !== t; }));
 }
 var ALT_TITLES = {
 velhos: ['No Country for Old Men'],
@@ -454,34 +463,44 @@ alquimista: ['The Alchemist']
 };
 function gbSearch(title, author, pt, withAuthor){
 var q = 'intitle:' + title + ((withAuthor && author && author.indexOf('não informado') < 0) ? ' inauthor:' + author : '');
-var url = 'https://www.googleapis.com/books/v1/volumes?q=' + encodeURIComponent(q) + (pt ? '&langRestrict=pt' : '') + '&printType=books&maxResults=10&fields=items(volumeInfo(title,imageLinks))';
+var url = 'https://www.googleapis.com/books/v1/volumes?q=' + encodeURIComponent(q) + (pt ? '&langRestrict=pt' : '') + '&printType=books&maxResults=15&fields=items(volumeInfo(title,authors,imageLinks))';
 return fetch(url).then(function(r){ if(!r.ok) throw new Error('http ' + r.status); return r.json(); }).then(function(j){
-var it = (j.items || []).filter(function(x){ var v = x.volumeInfo || {}; return v.imageLinks && (v.imageLinks.thumbnail || v.imageLinks.smallThumbnail) && titleOk(title, v.title || ''); })[0];
-if(!it) return null;
-var l = it.volumeInfo.imageLinks;
-return (l.thumbnail || l.smallThumbnail).replace(/^http:/, 'https:').replace('&edge=curl', '');
+var out = [];
+(j.items || []).forEach(function(x){
+var v = x.volumeInfo || {}, l = v.imageLinks;
+if(!l || !(l.thumbnail || l.smallThumbnail) || !matchOk(title, author, v.title || '', v.authors)) return;
+var u = (l.thumbnail || l.smallThumbnail).replace(/^http:/, 'https:').replace('&edge=curl', '');
+if(out.some(function(o){ return o.u === u; })) return;
+out.push({u: u, t: v.title || '', a: (v.authors || []).join(', ')});
+});
+return exactFirst(out, title);
 });
 }
 function olSearch(title, author){
-var url = 'https://openlibrary.org/search.json?title=' + encodeURIComponent(title) + '&author=' + encodeURIComponent(author || '') + '&limit=5&fields=title,cover_i';
+var url = 'https://openlibrary.org/search.json?title=' + encodeURIComponent(title) + '&author=' + encodeURIComponent(author || '') + '&limit=8&fields=title,author_name,cover_i';
 return fetch(url).then(function(r){ if(!r.ok) throw new Error('http ' + r.status); return r.json(); }).then(function(j){
-var d = (j.docs || []).filter(function(x){ return x.cover_i && titleOk(title, x.title || ''); })[0];
-return d ? 'https://covers.openlibrary.org/b/id/' + d.cover_i + '-M.jpg' : null;
+var out = [];
+(j.docs || []).forEach(function(x){
+if(!x.cover_i || !matchOk(title, author, x.title || '', x.author_name)) return;
+var u = 'https://covers.openlibrary.org/b/id/' + x.cover_i + '-M.jpg';
+if(out.some(function(o){ return o.u === u; })) return;
+out.push({u: u, t: x.title || '', a: (x.author_name || []).join(', ')});
+});
+return exactFirst(out, title);
 });
 }
 function findCover(b){
 var alts = ALT_TITLES[b.id] || [], steps = [], limited = false, i = 0;
 steps.push(function(){ return gbSearch(b.t, b.a, true, true); });
 steps.push(function(){ return gbSearch(b.t, b.a, false, true); });
-steps.push(function(){ return gbSearch(b.t, b.a, true, false); });
 alts.forEach(function(t){ steps.push(function(){ return gbSearch(t, b.a, false, true); }); });
 steps.push(function(){ return olSearch(b.t, b.a); });
 alts.forEach(function(t){ steps.push(function(){ return olSearch(t, b.a); }); });
 function next(){
-if(i >= steps.length) return Promise.resolve({u: null, limited: limited});
+if(i >= steps.length) return Promise.resolve({list: [], limited: limited});
 var st = steps[i++];
-return st().catch(function(err){ if(err && String(err.message).indexOf('429') !== -1) limited = true; return null; }).then(function(u){
-if(u) return {u: u, limited: false};
+return st().catch(function(err){ if(err && String(err.message).indexOf('429') !== -1) limited = true; return []; }).then(function(list){
+if(list && list.length) return {list: list, limited: false};
 return new Promise(function(res){ setTimeout(res, 100); }).then(next);
 });
 }
@@ -504,7 +523,7 @@ if(!b) return;
 autoActive++;
 var wait = 200;
 findCover(b).then(function(res){
-if(res.u){ autoUrls[id] = {u: res.u, t: Date.now()}; }
+if(res.list.length){ autoUrls[id] = {u: res.list[0].u, c: res.list.slice(0, 8), i: 0, t: Date.now()}; }
 else if(res.limited){ autoUrls[id] = {u: null, t: Date.now() - AUTO_TTL_NEG + 5 * 60 * 1000}; wait = 4000; }
 else { autoUrls[id] = {u: null, t: Date.now()}; }
 saveAuto();
@@ -527,8 +546,12 @@ if(nu && el.parentNode) el.parentNode.replaceChild(nu, el);
 window.coverErr = function(el){
 var fb = el.getAttribute('data-fb');
 if(fb && el.getAttribute('src') !== fb){ el.setAttribute('src', fb); el.removeAttribute('data-fb'); return; }
-var id = el.getAttribute('data-id');
-if(id){ autoUrls[id] = {u: null, t: Date.now()}; saveAuto(); refreshCover(id); }
+var id = el.getAttribute('data-id'), a = id ? autoUrls[id] : null;
+if(!a) return;
+var bad = a.u, rest = (a.c || []).filter(function(x){ return x.u !== bad; });
+if(rest.length){ autoUrls[id] = {u: rest[0].u, c: rest, i: 0, t: Date.now()}; }
+else { autoUrls[id] = {u: null, t: Date.now()}; }
+saveAuto(); refreshCover(id);
 };
 function saveCovers(){ try{ localStorage.setItem(COV_KEY, JSON.stringify(covers)); return true; }catch(e){ return false; } }
 var remoteRef = null, saveTimer = null, toastTimer = null, undoSnap = null;
@@ -549,11 +572,22 @@ var inner = img
 : '<div class="ph" style="background:' + PH_COLORS[hashId(b.id) % PH_COLORS.length] + '"><span class="ph-t">' + esc(b.t) + '</span><span class="ph-a">' + esc(b.a) + '</span></div>';
 return '<div class="cv ' + cls + '" data-cv="' + esc(b.id) + '"' + (clickable ? ' data-act="abrir" data-id="' + esc(b.id) + '" aria-hidden="true"' : (img ? '' : ' role="img" aria-label="Capa ilustrativa de ' + esc(b.t) + '"')) + '>' + inner + '</div>';
 }
+function imgSearchUrl(b){
+var autor = (b.a && b.a.indexOf('não informado') < 0) ? ' ' + b.a : '';
+return 'https://www.google.com/search?tbm=isch&q=' + encodeURIComponent('capa livro ' + b.t + autor);
+}
 function coverBtns(b){
-var own = !!covers[b.id], auto = !own && !BUILTIN[b.id] && !!autoSrc(b.id), has = own || !!BUILTIN[b.id] || auto;
-return '<div class="cvbtns"><button class="btn small" type="button" data-act="capa">' + (has ? 'Trocar foto da capa' : 'Adicionar foto da capa') + '</button>' +
-(own ? '<button class="btn small quiet" type="button" data-act="capa-remover">Remover minha foto</button>' : '') +
-'<p class="cv-note">' + (auto ? 'Capa buscada automaticamente, pode ser de outra edição. Sua foto fica salva só neste aparelho.' : has ? 'Sua foto fica salva só neste aparelho.' : 'Sem foto, mostro uma capa ilustrativa. A foto fica salva só neste aparelho.') + '</p></div>';
+var own = !!covers[b.id], builtin = !own && !!BUILTIN[b.id], a = autoUrls[b.id];
+var auto = !own && !builtin && !!autoSrc(b.id), has = own || builtin || auto;
+var cand = (auto && a.c) ? a.c[a.i || 0] : null;
+var h = '<div class="cvbtns">';
+if(auto && a.c && a.c.length > 1) h += '<button class="btn small" type="button" data-act="capa-outra">Capa errada? Ver outra (' + ((a.i || 0) + 1) + ' de ' + a.c.length + ')</button>';
+h += '<button class="btn small' + (auto ? ' quiet' : '') + '" type="button" data-act="capa">' + (has ? 'Trocar por uma foto minha' : 'Adicionar foto da capa') + '</button>';
+h += '<a class="btn small quiet" href="' + esc(imgSearchUrl(b)) + '" target="_blank" rel="noopener noreferrer">Buscar capa no Google Imagens</a>';
+if(own) h += '<button class="btn small quiet" type="button" data-act="capa-remover">Remover minha foto</button>';
+if(auto) h += '<button class="btn small quiet" type="button" data-act="capa-nenhuma">Usar capa ilustrativa</button>';
+h += '<p class="cv-note">' + (cand ? 'Capa automática de ' + esc(cand.t) + (cand.a ? ', ' + esc(cand.a) : '') + '. Pode ser de outra edição.' : auto ? 'Capa buscada automaticamente, pode ser de outra edição.' : has ? 'Sua foto fica salva só neste aparelho.' : 'Sem foto, mostro uma capa ilustrativa. A foto fica salva só neste aparelho.') + '</p></div>';
+return h;
 }
 function processCover(file, id){
 if(!file || String(file.type).indexOf('image/') !== 0){ toast('Escolha um arquivo de imagem.'); return; }
@@ -986,6 +1020,11 @@ shelfSel = ls[ix].id; renderResumo();
 else if(act === 'ver-descartados'){ filtro = 'descartado'; go('estante'); }
 else if(act === 'capa'){ $('capa-input').click(); }
 else if(act === 'capa-remover'){ delete covers[state.focus]; saveCovers(); renderAll(); toast('Foto removida.'); }
+else if(act === 'capa-outra'){
+var a1 = autoUrls[state.focus];
+if(a1 && a1.c && a1.c.length > 1){ a1.i = ((a1.i || 0) + 1) % a1.c.length; a1.u = a1.c[a1.i].u; saveAuto(); renderAll(); }
+}
+else if(act === 'capa-nenhuma'){ autoUrls[state.focus] = {u: null, t: Date.now() + 10 * 365 * 24 * 3600 * 1000}; saveAuto(); renderAll(); }
 else if(act === 'curto'){
 var pend = books().filter(function(b){ return !state.read[b.id] && !state.discarded[b.id]; }).sort(function(x,y){ return x.p - y.p; })[0];
 if(pend){ startReading(pend.id); go('livro'); }
